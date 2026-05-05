@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SNZ | بوابة السحب الذكية</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #020617; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow-x: hidden; padding-bottom: 90px; padding-top: 35px; min-height: 100dvh; }
+        
+        .glass-card { 
+            background: rgba(15, 23, 42, 0.7); 
+            border: 1px solid rgba(6, 182, 212, 0.2); 
+            backdrop-filter: blur(24px); 
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: 1.5rem; 
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(6, 182, 212, 0.05);
+        }
+        
+        .cyber-input { background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.08); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); color: #06b6d4; font-family: monospace; }
+        .cyber-input:focus { border-color: #f97316; outline: none; box-shadow: 0 0 20px rgba(249, 115, 22, 0.15); transform: translateY(-2px); }
+        .cyber-input:disabled { background: rgba(255,255,255,0.02); color: #64748b; border-color: rgba(255,255,255,0.03); cursor: not-allowed; transform: none; }
+        
+        @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+        .ticker-wrap { width: 100%; overflow: hidden; background: rgba(2, 6, 23, 0.95); border-bottom: 1px solid rgba(249, 115, 22, 0.2); backdrop-filter: blur(10px); position: fixed; top: 0; left: 0; z-index: 40; height: 32px; }
+        .ticker-content { display: flex; white-space: nowrap; animation: ticker 40s linear infinite; }
+        
+        .balance-glow { animation: glow 2s infinite alternate; text-shadow: 0 0 20px rgba(6, 182, 212, 0.5); }
+        @keyframes glow { 0% { opacity: 0.8; } 100% { opacity: 1; text-shadow: 0 0 30px rgba(6, 182, 212, 0.8); } }
+        
+        .btn-loading { opacity: 0.7; pointer-events: none; filter: grayscale(0.5); }
+        
+        .receipt-box { background: repeating-linear-gradient(45deg, rgba(0,0,0,0.2), rgba(0,0,0,0.2) 10px, rgba(0,0,0,0.4) 10px, rgba(0,0,0,0.4) 20px); border: 1px dashed rgba(255,255,255,0.1); }
+    </style>
+</head>
+<body class="relative">
+
+    <div class="absolute top-20 left-0 w-64 h-64 bg-orange-600/10 rounded-full blur-[100px] pointer-events-none z-0"></div>
+    <div class="absolute bottom-20 right-0 w-64 h-64 bg-cyan-600/10 rounded-full blur-[100px] pointer-events-none z-0"></div>
+
+    <div id="ultimateLoader" class="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-[#020617] transition-all duration-700">
+        <div class="relative w-24 h-24 flex items-center justify-center mb-8">
+            <div class="absolute inset-0 rounded-full border-t-2 border-r-2 border-orange-500 animate-spin opacity-80"></div>
+            <div class="absolute inset-3 rounded-full border-b-2 border-l-2 border-cyan-500 animate-[spin_1.5s_reverse_infinite] opacity-60"></div>
+            <div class="w-10 h-10 bg-gradient-to-tr from-orange-500 to-cyan-500 rounded-full animate-pulse absolute blur-sm"></div>
+            <span class="text-xl font-black text-white tracking-widest z-10 drop-shadow-lg">SNZ</span>
+        </div>
+        <div class="text-[9px] text-orange-400 font-mono tracking-[0.3em] uppercase animate-pulse">ESTABLISHING SECURE TUNNEL...</div>
+    </div>
+
+    <div class="ticker-wrap flex items-center">
+        <div class="ticker-content gap-12 text-[10px] font-mono">
+            <span class="text-orange-400 font-bold flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-orange-400 animate-ping"></span> SECURE WITHDRAWAL PROTOCOL ACTIVE</span>
+            <span class="text-cyan-400 font-bold flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span> CONNECTED TO COLD STORAGE</span>
+            <span class="text-green-400 font-bold flex items-center gap-2"> FUNDS ARE SAFU</span>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="fixed top-12 left-1/2 -translate-x-1/2 w-[90%] max-w-sm z-[9999] flex flex-col gap-2 pointer-events-none"></div>
+
+    <div class="pt-4 px-5 flex justify-between items-center mb-6 relative z-10">
+        <button onclick="window.location.href='dashboard.html'" class="flex items-center gap-2 text-[10px] font-bold text-gray-400 hover:text-white transition-colors bg-black/40 px-4 py-2.5 rounded-xl border border-white/5 active:scale-95 backdrop-blur-md">
+            <span>❮ عودة للمحفظة</span>
+        </button>
+        <div class="text-left">
+            <h2 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500 uppercase tracking-widest">سحب الأرباح</h2>
+            <p class="text-[8px] text-gray-500 font-mono">Withdrawal Gateway</p>
+        </div>
+    </div>
+
+    <div class="px-4 mb-6 relative z-10">
+        <div class="glass-card p-6 border-t-4 border-t-orange-500">
+            
+            <div class="text-center mb-8 relative">
+                <div class="absolute inset-0 bg-cyan-500/5 blur-xl rounded-full"></div>
+                <p class="text-[9px] text-cyan-400/80 font-bold uppercase mb-2 tracking-widest">الأرباح القابلة للسحب (USDT)</p>
+                <h1 class="text-4xl font-black text-white balance-glow tracking-tight">$<span id="currentBalance">0.00</span></h1>
+                
+                <div class="mt-4 inline-flex items-center gap-2 bg-red-950/40 border border-red-500/20 px-3 py-1.5 rounded-xl backdrop-blur-sm">
+                    <span class="text-[9px] text-red-400 font-bold uppercase tracking-widest">🔒 رأس المال المجمّد:</span>
+                    <span class="text-[11px] font-black font-mono text-red-300">$<span id="frozenBalance">0.00</span></span>
+                </div>
+                
+                <div id="banAlert" class="hidden mt-4 bg-red-950/80 border border-red-500/50 p-3 rounded-xl text-red-400 text-[10px] font-black shadow-[0_0_15px_rgba(239,68,68,0.3)]">
+                    🚫 تم تقييد عمليات السحب لحسابك مؤقتاً لدواعٍ أمنية، يرجى التواصل مع الدعم.
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <label class="text-[9px] text-gray-500 font-bold mb-2 block uppercase tracking-widest">شبكة التحويل المعتمدة</label>
+                <div class="rounded-2xl p-4 flex items-center justify-between bg-black/40 border border-green-500/20">
+                    <div class="flex items-center gap-3">
+                        <img src="https://cryptologos.cc/logos/tether-usdt-logo.png" class="w-8 h-8 drop-shadow-lg">
+                        <div>
+                            <div class="text-xs font-black text-white">USDT (Tether)</div>
+                            <div class="text-[9px] text-green-400 font-mono mt-0.5">TRC20 / BEP20 Auto-Match</div>
+                        </div>
+                    </div>
+                    <span class="text-lg animate-pulse">🟢</span>
+                </div>
+            </div>
+
+            <div class="mb-6 relative group">
+                <div class="flex justify-between items-end mb-2">
+                    <label class="text-[9px] text-gray-500 font-bold uppercase tracking-widest">عنوان المحفظة الوجهة</label>
+                    <span id="lockStatus" class="text-[9px] text-orange-400 font-bold hidden bg-orange-500/10 px-2 py-0.5 rounded border border-orange-500/20">🔒 العنوان مجمّد للأمان</span>
+                </div>
+                <div class="relative">
+                    <input type="text" id="targetAddress" placeholder="قم بلصق عنوان USDT هنا..." class="w-full cyber-input p-4 rounded-xl text-xs outline-none pr-10">
+                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 opacity-50">🔗</span>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <div class="flex justify-between items-end mb-2">
+                    <label class="text-[9px] text-gray-500 font-bold uppercase tracking-widest">المبلغ المراد سحبه</label>
+                    <span id="minLimitLabel" class="text-[9px] text-cyan-400 font-bold bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">الحد الأدنى: $10.00</span>
+                </div>
+                <div class="relative">
+                    <input type="number" id="withdrawAmt" placeholder="0.00" class="w-full cyber-input p-4 rounded-xl text-xl font-black outline-none bg-black/60 pl-16">
+                    <button onclick="setAll()" id="btnAll" class="absolute left-2 top-1/2 -translate-y-1/2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-lg active:scale-95 shadow-lg transition-transform">MAX</button>
+                </div>
+            </div>
+
+            <div class="receipt-box rounded-xl p-4 mb-8">
+                <div class="flex justify-between items-center mb-2 pb-2 border-b border-white/5 text-[10px] font-mono">
+                    <span class="text-gray-400" id="feeLabel">رسوم التحويل:</span>
+                    <span class="text-red-400 font-bold" id="feeAmt">-$0.00</span>
+                </div>
+                <div class="flex justify-between items-center text-xs">
+                    <span class="text-gray-300 font-bold">الصافي المتوقع استلامه:</span>
+                    <span class="text-green-400 font-black text-sm" id="finalAmt">$0.00</span>
+                </div>
+            </div>
+
+            <button onclick="processWithdraw()" id="withdrawBtn" class="w-full bg-gradient-to-r from-orange-600 via-red-500 to-orange-600 bg-[length:200%_auto] hover:bg-right py-4 rounded-xl font-black text-white active:scale-95 transition-all duration-500 flex justify-center items-center gap-3 shadow-[0_0_20px_rgba(249,115,22,0.3)]">
+                <span id="btnText" class="tracking-wide">تأكيد طلب السحب والتشفير</span>
+                <div id="btnSpinner" class="hidden w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            </button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <script src="config.js"></script>
+    <script>
+        function showToast(message, type = 'error') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const icon = type === 'success' ? '✅' : '⚠️';
+            const colors = type === 'success' ? 'bg-[#064e3b]/90 border-[#10b981] text-[#a7f3d0]' : 'bg-[#7f1d1d]/90 border-[#ef4444] text-[#fecaca]';
+            
+            toast.className = `px-4 py-3.5 rounded-xl backdrop-blur-md border shadow-2xl text-[11px] font-bold transition-all duration-400 transform translate-y-[-20px] opacity-0 flex items-center gap-3 ${colors}`;
+            toast.innerHTML = `<span class="text-base">${icon}</span> <span>${message}</span>`;
+            
+            container.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.remove('translate-y-[-20px]', 'opacity-0'));
+            setTimeout(() => { toast.classList.add('translate-y-[-20px]', 'opacity-0'); setTimeout(() => toast.remove(), 400); }, 4000);
+        }
+
+        let userEmail = localStorage.getItem('currentUserEmail') || "guest@snz.com";
+        let profitBalance = 0; 
+        let currentFeePercent = 10.00; 
+        let currentMinWithdraw = 10.00; // المتغير الديناميكي للحد الأدنى
+        let canWithdraw = true; // متغير الحظر
+
+        async function fetchSettingsAndData() {
+            if (typeof _supabase === 'undefined') return;
+
+            try {
+                // جلب نسبة الرسوم
+                const { data: feeSettings } = await _supabase.from('platform_settings').select('setting_value').eq('setting_key', 'withdrawal_fee_percent').single();
+                if (feeSettings) currentFeePercent = parseFloat(feeSettings.setting_value);
+                document.getElementById('feeLabel').innerText = `رسوم التحويل (${currentFeePercent}%):`;
+
+                // جلب الحد الأدنى
+                const { data: limitSettings } = await _supabase.from('platform_settings').select('setting_value').eq('setting_key', 'min_withdraw_limit').single();
+                if (limitSettings) {
+                    currentMinWithdraw = parseFloat(limitSettings.setting_value);
+                    document.getElementById('minLimitLabel').innerText = `الحد الأدنى: $${currentMinWithdraw.toFixed(2)}`;
+                }
+
+                // جلب بيانات المستخدم
+                const { data: user, error: usrErr } = await _supabase.from('users').select('balance, profit_balance, withdraw_address, can_withdraw').eq('email', userEmail).single();
+
+                if(user && !usrErr) {
+                    profitBalance = parseFloat(user.profit_balance || 0);
+                    document.getElementById('currentBalance').innerText = profitBalance.toFixed(2);
+                    document.getElementById('frozenBalance').innerText = parseFloat(user.balance || 0).toFixed(2);
+                    
+                    if(user.withdraw_address) {
+                        const addrInput = document.getElementById('targetAddress');
+                        addrInput.value = user.withdraw_address;
+                        addrInput.disabled = true;
+                        addrInput.classList.add('opacity-70');
+                        document.getElementById('lockStatus').classList.remove('hidden');
+                    }
+
+                    // التحقق من الحظر
+                    canWithdraw = user.can_withdraw !== false;
+                    if(!canWithdraw) {
+                        document.getElementById('banAlert').classList.remove('hidden');
+                        const btn = document.getElementById('withdrawBtn');
+                        btn.disabled = true;
+                        btn.classList.add('opacity-50', 'grayscale', 'cursor-not-allowed');
+                    }
+                }
+            } catch (error) {
+                console.error("Data Sync Error:", error);
+            }
+
+            // إخفاء شاشة التحميل بعد التجهيز
+            document.getElementById('ultimateLoader').style.opacity = '0';
+            setTimeout(() => document.getElementById('ultimateLoader').style.display = 'none', 700);
+        }
+        
+        fetchSettingsAndData();
+
+        document.getElementById('withdrawAmt').addEventListener('input', (e) => {
+            updateCalculations(parseFloat(e.target.value) || 0);
+        });
+
+        function updateCalculations(val) {
+            const fee = val * (currentFeePercent / 100); 
+            document.getElementById('feeAmt').innerText = "-$" + fee.toFixed(2);
+            document.getElementById('finalAmt').innerText = "$" + Math.max(0, val - fee).toFixed(2);
+        }
+
+        function setAll() {
+            if (!canWithdraw) return;
+            document.getElementById('withdrawAmt').value = profitBalance;
+            updateCalculations(profitBalance);
+        }
+
+        async function processWithdraw() {
+            if (!canWithdraw) return showToast("إجراء مرفوض: تم تقييد عمليات السحب لحسابك.", "error");
+
+            const amountInput = document.getElementById('withdrawAmt');
+            const amount = parseFloat(amountInput.value);
+            const addressInput = document.getElementById('targetAddress');
+            const address = addressInput.value.trim();
+            const btn = document.getElementById('withdrawBtn');
+
+            if (!address) return showToast("الرجاء إدخال عنوان المحفظة للتحويل", "error");
+            if (address.length < 10) return showToast("عنوان المحفظة غير صالح", "error");
+            
+            // الفحص الديناميكي للحد الأدنى للسحب
+            if (isNaN(amount) || amount < currentMinWithdraw) {
+                return showToast(`إجراء مرفوض: يجب توفير حد أدنى قدره $${currentMinWithdraw.toFixed(2)} لإتمام عملية السحب.`, "error");
+            }
+            
+            if (amount > profitBalance) return showToast("عذراً، الرصيد المتاح للأرباح غير كافٍ", "error"); 
+
+            btn.classList.add('btn-loading');
+            amountInput.disabled = true;
+            document.getElementById('btnAll').disabled = true;
+            document.getElementById('btnText').innerText = "جاري تشفير وإرسال الطلب...";
+            document.getElementById('btnSpinner').classList.remove('hidden');
+
+            try {
+                // الخصم من الرصيد
+                const { error: updateError } = await _supabase
+                    .from('users')
+                    .update({ profit_balance: profitBalance - amount }) 
+                    .eq('email', userEmail);
+
+                if (updateError) throw updateError;
+
+                // حفظ العنوان لو لم يكن محفوظاً
+                if (!addressInput.disabled) {
+                    await _supabase
+                        .from('users')
+                        .update({ withdraw_address: address })
+                        .eq('email', userEmail)
+                        .is('withdraw_address', null);
+                }
+
+                // إرسال طلب السحب
+                const { error: insertError } = await _supabase.from('withdrawals').insert([{
+                    user_email: userEmail,
+                    amount: amount,
+                    address: address,
+                    status: 'pending'
+                }]);
+
+                if (insertError) throw insertError;
+
+                showToast("تم تأكيد طلب السحب بنجاح! قيد المراجعة ✅", "success");
+                setTimeout(() => window.location.href = 'dashboard.html', 2500);
+
+            } catch (err) {
+                showToast("حدث خطأ تقني في الاتصال، يرجى المحاولة لاحقاً", "error");
+                console.error(err);
+                
+                btn.classList.remove('btn-loading');
+                amountInput.disabled = false;
+                document.getElementById('btnAll').disabled = false;
+                document.getElementById('btnText').innerText = "تأكيد طلب السحب والتشفير";
+                document.getElementById('btnSpinner').classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
