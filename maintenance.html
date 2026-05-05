@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>تحديث النظام | SNZ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #020617; color: #fff; display: flex; align-items: center; justify-content: center; min-height: 100vh; text-align: center; overflow: hidden; user-select: none; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; }
+        
+        .glass-card { background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(6, 182, 212, 0.2); box-shadow: 0 0 40px rgba(6, 182, 212, 0.1), inset 0 0 20px rgba(168, 85, 247, 0.05); backdrop-filter: blur(20px); border-radius: 1.5rem; }
+        
+        /* تأثير الدوران للشعار */
+        .cyber-spinner { animation: spin 4s linear infinite; filter: drop-shadow(0 0 10px rgba(6, 182, 212, 0.6)); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* شريط التقدم */
+        .progress-bg { background: rgba(0,0,0,0.5); border-radius: 999px; overflow: hidden; height: 6px; border: 1px solid rgba(255,255,255,0.1); width: 100%; margin-top: 20px; }
+        .progress-bar { height: 100%; background: linear-gradient(90deg, #06b6d4, #a855f7); width: 0%; box-shadow: 0 0 15px rgba(168, 85, 247, 0.6); transition: width 0.5s ease; }
+        
+        /* شاشة الأوامر (الترمينال) */
+        .terminal-box { background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.05); border-radius: 0.5rem; padding: 10px; margin-top: 20px; text-align: left; font-family: monospace; font-size: 10px; color: #4ade80; height: 60px; overflow: hidden; position: relative; }
+        .terminal-box::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 30px; background: linear-gradient(to top, rgba(0,0,0,0.9), transparent); pointer-events: none; }
+        .log-line { animation: fadeUp 0.3s ease forwards; margin-bottom: 4px; opacity: 0; transform: translateY(10px); }
+        @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+
+        .pulse-text { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+    </style>
+</head>
+<body oncontextmenu="return false;">
+    
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500/10 blur-[100px] rounded-full pointer-events-none z-0"></div>
+
+    <div class="glass-card p-8 md:p-12 max-w-[90%] md:max-w-md w-full relative z-10">
+        
+        <div class="flex justify-center mb-6">
+            <svg class="w-20 h-20 text-cyan-400 cyber-spinner" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+        </div>
+
+        <h1 class="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 mb-2 tracking-wider uppercase">System Upgrade</h1>
+        <p class="text-gray-400 text-xs md:text-sm leading-relaxed font-bold">
+            جاري تنفيذ بروتوكول التحديث الأمني وتوسيع مجمعات السيولة لضمان تجربة تداول فائقة السرعة.
+        </p>
+
+        <div class="progress-bg">
+            <div id="pBar" class="progress-bar"></div>
+        </div>
+        <div class="flex justify-between items-center mt-2 px-1">
+            <span class="text-[9px] text-cyan-400 font-mono pulse-text">UPDATING NODES...</span>
+            <span id="pText" class="text-[10px] text-white font-black font-mono">0%</span>
+        </div>
+
+        <div class="terminal-box" id="terminalLogs" dir="ltr">
+            </div>
+
+        <div class="mt-6 pt-4 border-t border-white/5 flex items-center justify-center gap-2">
+            <div class="w-2 h-2 bg-purple-500 rounded-full animate-ping"></div>
+            <span class="text-[10px] text-gray-500 font-mono">يرجى عدم إغلاق الصفحة، سنعود للعمل تلقائياً.</span>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <script src="config.js"></script>
+    
+    <script>
+        // --- تأثير شريط التقدم الوهمي الذكي ---
+        let progress = 0;
+        const pBar = document.getElementById('pBar');
+        const pText = document.getElementById('pText');
+        
+        function updateProgress() {
+            // يزيد بسرعة في البداية ثم يبطئ عند 85% ليوهم بالتحميل الحقيقي
+            let increment = progress < 85 ? Math.random() * 15 : Math.random() * 2;
+            progress += increment;
+            if (progress > 98) progress = 98; // يقف عند 98% بانتظار فتح الموقع
+            
+            pBar.style.width = progress + '%';
+            pText.innerText = Math.floor(progress) + '%';
+            
+            if (progress < 98) setTimeout(updateProgress, Math.random() * 800 + 200);
+        }
+        setTimeout(updateProgress, 500);
+
+        // --- تأثير الترمينال الوهمي (Logs) ---
+        const logs = [
+            "> Initializing SNZ Core Protocol...",
+            "> Verifying encrypted user keys...",
+            "> Syncing Binance API webhooks...",
+            "> Patching smart contract vulnerabilities...",
+            "> Optimizing HFT algorithms...",
+            "> Expanding liquidity pools...",
+            "> Re-routing node connections...",
+            "> Securing user balance data...",
+            "> Applying AES-256 layer..."
+        ];
+        
+        const terminal = document.getElementById('terminalLogs');
+        let logIndex = 0;
+
+        function addLog() {
+            const div = document.createElement('div');
+            div.className = 'log-line';
+            div.innerText = logs[logIndex % logs.length];
+            terminal.appendChild(div);
+            
+            // إبقاء آخر 4 أسطر فقط
+            if (terminal.children.length > 4) {
+                terminal.removeChild(terminal.firstChild);
+            }
+            
+            logIndex++;
+            setTimeout(addLog, Math.random() * 1500 + 800);
+        }
+        addLog();
+
+        // --- الفحص المستمر الحقيقي للسيرفر ---
+        setInterval(async () => {
+            if (typeof _supabase !== 'undefined') {
+                try {
+                    const { data, error } = await _supabase.from('settings').select('is_maintenance').single();
+                    
+                    if (!error && data && data.is_maintenance === false) {
+                        // اكتمال الشريط إلى 100% قبل التوجيه بلحظة
+                        pBar.style.width = '100%';
+                        pText.innerText = '100%';
+                        pText.classList.replace('text-white', 'text-green-400');
+                        
+                        setTimeout(() => {
+                            window.location.replace('index.html'); 
+                        }, 800);
+                    }
+                } catch(e) {
+                    console.error("Waiting for connection...");
+                }
+            }
+        }, 3000);
+    </script>
+</body>
+</html>

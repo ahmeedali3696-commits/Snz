@@ -1,0 +1,16 @@
+{
+  "redirects": [
+    {
+      "source": "/config.js",
+      "has": [
+        {
+          "type": "header",
+          "key": "Sec-Fetch-Dest",
+          "value": "document"
+        }
+      ],
+      "destination": "/",
+      "permanent": false
+    }
+  ]
+}

@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SNZ | منصة التداول الاحترافية</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #020617; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; min-height: 100dvh; overflow-x: hidden; user-select: none; -webkit-user-select: none; }
+        
+        .glass-card { background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border-radius: 1.5rem; }
+        .cyber-input { background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s ease; }
+        .cyber-input:focus { border-color: #a855f7; box-shadow: 0 0 15px rgba(168, 85, 247, 0.2); outline: none; }
+        .cyber-input:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .data-syncing { color: transparent !important; background: linear-gradient(90deg, rgba(6, 182, 212, 0.1), rgba(168, 85, 247, 0.4), rgba(6, 182, 212, 0.1)); background-size: 200% 100%; animation: data-sync 1.5s infinite linear; border-radius: 4px; }
+        @keyframes data-sync { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+        
+        .ticker-wrap { width: 100%; overflow: hidden; background: rgba(2, 6, 23, 0.9); border-bottom: 1px solid rgba(6, 182, 212, 0.2); position: fixed; top: 0; left: 0; z-index: 50; }
+        .ticker-content { display: flex; white-space: nowrap; animation: ticker 25s linear infinite; }
+        @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+
+        .trade-progress-bg { background: rgba(255,255,255,0.05); border-radius: 999px; overflow: hidden; height: 6px; box-shadow: inset 0 0 5px rgba(0,0,0,0.5); }
+        .trade-progress-bar { height: 100%; background: linear-gradient(90deg, #06b6d4, #a855f7); width: 0%; transition: width 1s linear; box-shadow: 0 0 10px rgba(168, 85, 247, 0.5); }
+        
+        .price-up { color: #4ade80 !important; transition: all 0.1s ease; }
+        .price-down { color: #f87171 !important; transition: all 0.1s ease; }
+
+        .range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 20px; height: 20px; border-radius: 50%;
+            background: #a855f7; box-shadow: 0 0 15px #a855f7, inset 0 0 5px #fff;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .range-slider::-webkit-slider-thumb:hover { transform: scale(1.1); box-shadow: 0 0 20px #a855f7; }
+        .range-slider:disabled::-webkit-slider-thumb { background: #4b5563; box-shadow: none; cursor: not-allowed; }
+    </style>
+</head>
+<body class="pb-24 pt-12" oncontextmenu="return false;">
+
+    <div class="ticker-wrap flex items-center h-8">
+        <div class="ticker-content gap-12 text-[10px] font-mono">
+            <span class="text-green-400 font-bold flex items-center gap-2">● BTC/USDT LIQUIDITY STABLE</span>
+            <span class="text-cyan-400 font-bold flex items-center gap-2">● SYSTEM ENCRYPTED [AES-256] SECURE</span>
+            <span class="text-purple-400 font-bold flex items-center gap-2">📡 SCORPION RADAR ACTIVE</span>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="fixed top-12 left-1/2 -translate-x-1/2 w-[95%] max-w-sm z-[9999] flex flex-col gap-2 pointer-events-none"></div>
+
+    <div class="px-5 flex justify-between items-start mb-6 mt-4 relative z-10">
+        <div class="flex flex-col items-start gap-2">
+            <div class="px-3 py-1.5 rounded-full flex items-center gap-2 bg-purple-500/10 border border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.1)]">
+                <span class="text-[8px] text-purple-300 font-bold uppercase tracking-widest">ID:</span>
+                <span class="text-[11px] font-black text-white font-mono data-syncing" id="displayUID">SNZ-SYNC...</span>
+            </div>
+            <div class="flex items-center gap-2 bg-black/40 border border-white/5 rounded-lg p-1.5 px-3">
+                <span class="text-[8px] text-gray-400 font-mono uppercase">Plan:</span>
+                <span class="text-[10px] font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-400 data-syncing" id="displayPlan">LOADING...</span>
+            </div>
+        </div>
+        <div class="flex flex-col items-end gap-2">
+            <div class="px-4 py-2 rounded-xl flex items-center gap-2 bg-white/5 border border-white/10">
+                <div class="flex flex-col text-left">
+                    <span class="text-[8px] text-cyan-300/70 font-mono uppercase mb-0.5">Connected Node</span>
+                    <h3 class="font-black text-[10px] text-white tracking-wide data-syncing" id="displayEmail">---------</h3>
+                </div>
+                <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse ml-1 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+            </div>
+            <button onclick="logout()" class="text-[10px] text-red-400 hover:text-red-300 transition-colors font-bold tracking-wider">تسجيل الخروج ⎋</button>
+        </div>
+    </div>
+
+    <div class="px-4 mb-6 relative z-10">
+        <div class="glass-card p-6 md:p-8 text-center relative overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-t-2 border-cyan-500/30">
+            <div class="absolute -top-10 -right-10 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <p class="text-gray-400 text-[10px] mb-1 font-bold tracking-wider uppercase">الرصيد المشفر (USDT)</p>
+            <h1 class="text-4xl font-black text-white mb-6 tracking-tight">$<span id="userBalance" class="data-syncing font-mono">0.00</span></h1>
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="location.href='deposit.html'" class="bg-gradient-to-r from-cyan-900/80 to-cyan-800/80 text-cyan-300 p-3.5 text-xs font-black rounded-xl border border-cyan-500/30 hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] active:scale-95 transition-all">
+                    📥 إيداع
+                </button>
+                <button onclick="location.href='withdraw.html'" class="bg-gradient-to-r from-purple-900/80 to-purple-800/80 text-purple-300 p-3.5 text-xs font-black rounded-xl border border-purple-500/30 hover:shadow-[0_0_15px_rgba(168,85,247,0.3)] active:scale-95 transition-all">
+                    📤 سحب
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="px-4 mb-6 relative z-10">
+        <div class="glass-card p-5 border-t-4 border-cyan-500 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+            <div class="flex justify-between items-center mb-5 border-b border-white/5 pb-3">
+                <h3 class="text-sm font-black text-white flex items-center gap-2">⚡ بروتوكول التداول المتقدم</h3>
+                <span class="text-[10px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-2 py-1 rounded">BTC/USDT</span>
+            </div>
+            
+            <div id="tradeInputZone" class="relative">
+                
+                <div id="tradeLockOverlay" class="absolute inset-[-10px] z-20 bg-[#020617]/85 backdrop-blur-[4px] flex flex-col items-center justify-center rounded-2xl border border-red-500/20 transition-all duration-500">
+                    <span class="text-4xl mb-3 drop-shadow-[0_0_15px_rgba(239,68,68,0.8)] animate-pulse">🔒</span>
+                    <p class="text-sm text-red-400 font-black mb-1">مجمع السيولة مغلق</p>
+                    <p class="text-[9px] text-gray-400 mb-4 text-center px-4 leading-relaxed">لا يمكنك إدخال كود التداول لأن باقتك الحالية (مجانية). يرجى ترقية حسابك لفك التشفير وبدء الأرباح.</p>
+                    <button onclick="location.href='plans.html'" class="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white px-6 py-2.5 rounded-lg text-[10px] font-black shadow-[0_0_15px_rgba(239,68,68,0.4)] active:scale-95 transition-all">تفعيل باقة VIP 🚀</button>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-[10px] text-gray-400 mb-1.5 font-bold">مفتاح التشفير (Signal Code) <span class="text-red-400 font-normal text-[8px] bg-red-500/10 px-1 rounded ml-1">استخدام مرة واحدة</span></label>
+                    <input type="text" id="signalCode" autocomplete="off" disabled placeholder="أدخل كود تداول هنا..." class="w-full cyber-input rounded-xl p-3.5 text-xs text-center text-cyan-400 font-mono uppercase tracking-widest">
+                </div>
+
+                <div class="mb-5 bg-black/40 p-4 rounded-xl border border-white/5 relative">
+                    <div class="flex justify-between items-end mb-4">
+                        <div class="flex flex-col">
+                            <span class="text-[9px] text-gray-500 font-bold mb-1 uppercase">حجم العقد المالي</span>
+                            <span class="text-2xl font-black text-white font-mono" id="sliderValueDisplay">$30</span>
+                        </div>
+                        <div class="flex flex-col text-left">
+                            <span class="text-[9px] text-gray-500 font-bold mb-1 uppercase">العائد اليومي المتوقع</span>
+                            <span class="text-sm font-black text-green-400 font-mono" id="expectedProfitDisplay">...</span>
+                        </div>
+                    </div>
+                    
+                    <input type="range" id="tradeAmount" min="30" max="120" value="30" step="30" oninput="updateSliderUI()" disabled class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none outline-none range-slider">
+                    
+                    <div class="flex justify-between text-[8px] text-gray-600 mt-2 font-mono px-1">
+                        <span>$30</span>
+                        <span>$60</span>
+                        <span>$90</span>
+                        <span>$120 Max</span>
+                    </div>
+                </div>
+                
+                <div class="flex justify-between items-center mb-4 px-1">
+                    <span class="text-[9px] text-gray-400">السيولة المتاحة:</span>
+                    <span class="text-[10px] text-cyan-400 font-mono font-bold">$<span id="availableBalanceUI">0.00</span></span>
+                </div>
+
+                <button id="executeBtn" disabled onclick="startSecureTrade()" class="w-full bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 disabled:from-gray-700 disabled:to-gray-800 disabled:cursor-not-allowed disabled:shadow-none py-4 rounded-xl font-black text-xs text-white shadow-[0_0_20px_rgba(168,85,247,0.3)] active:scale-95 transition-all">
+                    تأكيد وتنفيذ الطلب 🚀
+                </button>
+            </div>
+
+            <div id="tradeProcessZone" class="hidden mt-2 text-center py-4">
+                <div class="flex justify-between items-center mb-2 px-2">
+                    <span class="text-[10px] font-bold text-cyan-400 animate-pulse">جاري تنفيذ العقد الذكي في مجمع السيولة...</span>
+                    <span class="text-[12px] font-black font-mono text-white tracking-widest" id="tradeTimeLeft">01:00</span>
+                </div>
+                <div class="trade-progress-bg">
+                    <div id="tradeProgressBar" class="trade-progress-bar"></div>
+                </div>
+                <div class="mt-4 p-2.5 bg-green-900/20 border border-green-500/30 rounded-lg text-right flex items-start gap-2">
+                    <span class="text-sm">☁️</span>
+                    <p class="text-[9px] text-green-400 font-bold leading-relaxed">العقد الذكي يعمل سحابياً الآن. يمكنك إغلاق التطبيق بأمان، وسيتم تحرير الهامش وإيداع الأرباح تلقائياً عند انتهاء الوقت.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="px-4 mb-6 relative z-10">
+        <div class="glass-card p-4 border-l-4 border-green-500 bg-gradient-to-br from-[#0f172a] to-[#064e3b]/10">
+            <div class="flex justify-between items-center mb-3 border-b border-white/5 pb-2">
+                <h3 class="text-xs font-black text-white flex items-center gap-2">💸 سجل السيولة المباشر</h3>
+                <span class="text-[8px] bg-green-500/20 border border-green-500/30 text-green-400 px-2 py-1 rounded font-bold uppercase animate-pulse">Live Radar</span>
+            </div>
+            <div class="bg-black/40 rounded-xl p-2 border border-white/5 flex flex-col gap-2 min-h-[100px]" id="liveWithdrawalFeed"></div>
+        </div>
+    </div>
+
+    <div class="px-4 mb-6 relative z-10">
+        <div class="glass-card p-4 border-l-4 border-purple-500">
+            <div class="flex justify-between items-center mb-3 border-b border-white/5 pb-2">
+                <h3 class="text-xs font-black text-white flex items-center gap-2">📊 أسواق العملات المباشرة</h3>
+                <span class="text-[8px] bg-purple-500/20 border border-purple-500/30 text-purple-400 px-2 py-1 rounded font-bold uppercase animate-pulse">Binance API</span>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-black/40 rounded-xl p-3 border border-white/5 flex flex-col items-center">
+                    <span class="text-[10px] text-gray-400 font-bold mb-1">BTC/USDT</span>
+                    <span id="price-btc" class="text-sm font-black font-mono tracking-wider text-white">Loading...</span>
+                </div>
+                <div class="bg-black/40 rounded-xl p-3 border border-white/5 flex flex-col items-center">
+                    <span class="text-[10px] text-gray-400 font-bold mb-1">ETH/USDT</span>
+                    <span id="price-eth" class="text-sm font-black font-mono tracking-wider text-white">Loading...</span>
+                </div>
+                <div class="bg-black/40 rounded-xl p-3 border border-white/5 flex flex-col items-center">
+                    <span class="text-[10px] text-gray-400 font-bold mb-1">BNB/USDT</span>
+                    <span id="price-bnb" class="text-sm font-black font-mono tracking-wider text-white">Loading...</span>
+                </div>
+                <div class="bg-black/40 rounded-xl p-3 border border-white/5 flex flex-col items-center">
+                    <span class="text-[10px] text-gray-400 font-bold mb-1">SOL/USDT</span>
+                    <span id="price-sol" class="text-sm font-black font-mono tracking-wider text-white">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="fixed bottom-0 left-0 right-0 z-50 bg-[#020617]/95 backdrop-blur-xl border-t border-white/10 pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
+        <div class="flex justify-around items-center p-3">
+            <button class="flex flex-col items-center gap-1 text-cyan-400 active:scale-90 transition-transform relative">
+                <div class="absolute -top-3 w-8 h-1 bg-cyan-400 rounded-full shadow-[0_0_10px_#22d3ee]"></div>
+                <span class="text-lg drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]">📈</span><span class="text-[9px] font-bold">التداول</span>
+            </button>
+            <button onclick="location.href='plans.html'" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white active:scale-90 transition-transform">
+                <span class="text-lg">💼</span><span class="text-[9px]">الباقات</span>
+            </button>
+            <button onclick="location.href='team.html'" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white active:scale-90 transition-transform">
+                <span class="text-lg">👥</span><span class="text-[9px]">الفريق</span>
+            </button>
+            <button onclick="location.href='account.html'" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white active:scale-90 transition-transform">
+                <span class="text-lg">⚙️</span><span class="text-[9px]">حسابي</span>
+            </button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <script src="config.js"></script>
+    <script src="app.js"></script> 
+    
+    <script>
+        document.addEventListener('keydown', function(e) {
+            if(e.key === "F12" || (e.ctrlKey && e.shiftKey && e.key === "I")) { e.preventDefault(); }
+        });
+
+        let currentRealBalance = 0;
+        const currentUser = localStorage.getItem('currentUserEmail');
+        let activeTimer = null; 
+        const SALT_KEY = "SNZ_SECURE_NODE_99"; 
+        
+        let isTradeActive = false;
+        let pendingTradeChecked = false;
+
+        async function fetchSystemData() {
+            if (!currentUser) {
+                window.location.replace('index.html');
+                return;
+            }
+            try {
+                const { data, error } = await _supabase
+                    .from('users')
+                    .select('balance, plan, uid')
+                    .eq('email', currentUser)
+                    .single();
+
+                if (data && !error) {
+                    currentRealBalance = parseFloat(data.balance || 0);
+                    
+                    document.querySelectorAll('.data-syncing').forEach(el => el.classList.remove('data-syncing'));
+                    
+                    document.getElementById('userBalance').innerText = currentRealBalance.toFixed(2);
+                    document.getElementById('availableBalanceUI').innerText = currentRealBalance.toFixed(2);
+                    
+                    const userPlan = (data.plan || 'Free').toUpperCase();
+                    document.getElementById('displayPlan').innerText = userPlan;
+                    document.getElementById('displayUID').innerText = data.uid || 'SNZ-USER';
+                    document.getElementById('displayEmail').innerText = currentUser.split('@')[0];
+
+                    const lockOverlay = document.getElementById('tradeLockOverlay');
+                    const sigInput = document.getElementById('signalCode');
+                    const amtSlider = document.getElementById('tradeAmount');
+                    const exeBtn = document.getElementById('executeBtn');
+
+                    const isFreePlan = userPlan.includes('FREE') || userPlan.includes('LOADING') || userPlan.includes('مجانية');
+
+                    if (isFreePlan) {
+                        if(lockOverlay) lockOverlay.classList.remove('hidden');
+                        sigInput.disabled = true;
+                        amtSlider.disabled = true;
+                        exeBtn.disabled = true;
+                    } else {
+                        if(lockOverlay) lockOverlay.classList.add('hidden');
+                        if (!isTradeActive) {
+                            sigInput.disabled = false;
+                            amtSlider.disabled = false;
+                            exeBtn.disabled = false;
+                        }
+                    }
+
+                    if (!pendingTradeChecked) {
+                        pendingTradeChecked = true;
+                        checkPendingTrade(); 
+                    }
+                }
+            } catch (err) {
+                console.error("فشل مزامنة البيانات:", err);
+            }
+        }
+
+        function updateSliderUI() {
+            let rawVal = parseFloat(document.getElementById('tradeAmount').value);
+            let val = Math.max(30, Math.min(120, rawVal));
+            document.getElementById('sliderValueDisplay').innerText = '$' + val;
+            
+            // الربح التقريبي للعرض فقط قبل تنفيذ الكود
+            let expectedProfit = (val * 0.033333).toFixed(2);
+            document.getElementById('expectedProfitDisplay').innerText = '+$' + expectedProfit;
+        }
+
+        function systemAlert(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            let bgClass = type === 'success' ? 'bg-[#064e3b]/95 border-[#10b981] text-[#a7f3d0]' : 
+                          type === 'error' ? 'bg-[#7f1d1d]/95 border-[#ef4444] text-[#fecaca]' : 
+                          'bg-[#083344]/95 border-[#06b6d4] text-[#cffafe]';
+            let icon = type === 'success' ? '✅' : type === 'error' ? '🛑' : '⚡';
+            
+            toast.className = `px-4 py-3.5 rounded-xl backdrop-blur-md border shadow-2xl text-[11px] font-bold flex items-center gap-3 ${bgClass} transform transition-all duration-400 translate-y-[-20px] opacity-0 z-[99999]`;
+            toast.innerHTML = `<span class="text-base">${icon}</span> <span class="leading-relaxed">${message}</span>`;
+            container.appendChild(toast);
+            
+            requestAnimationFrame(() => toast.classList.remove('translate-y-[-20px]', 'opacity-0'));
+            setTimeout(() => {
+                toast.classList.add('translate-y-[-20px]', 'opacity-0');
+                setTimeout(() => toast.remove(), 400);
+            }, 4500); 
+        }
+
+        function createSecureSignature(time, amount) { return btoa(time + "_" + amount + "_" + SALT_KEY); }
+
+        async function startSecureTrade() {
+            if (typeof _supabase === 'undefined') return systemAlert("خطأ أمني: فشل الاتصال بخوادم التداول", "error");
+
+            const signal = document.getElementById('signalCode').value.trim().toUpperCase();
+            const amount = Math.max(30, Math.min(120, parseFloat(document.getElementById('tradeAmount').value)));
+
+            const currentPlan = document.getElementById('displayPlan').innerText.toUpperCase();
+            if (currentPlan.includes('FREE') || currentPlan.includes('LOADING') || currentPlan.includes('مجانية')) {
+                return systemAlert("مرفوض: لا يوجد عقد استثماري نشط. يرجى الاشتراك في باقة مدفوعة لفتح مجمع السيولة.", "error");
+            }
+
+            if (!signal) return systemAlert("يرجى إدخال مفتاح التشفير (Signal Code) أولاً.", "error");
+            if (amount > 120 || amount < 30) return systemAlert("قيمة العقد المالي يجب أن تكون بين 30$ و 120$.", "error");
+            if (amount > currentRealBalance) return systemAlert("مرفوض: السيولة المتاحة غير كافية لتنفيذ هذا العقد.", "error");
+
+            const btn = document.getElementById('executeBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block align-middle mr-2"></div> <span class="align-middle">جاري المصادقة على العقد...</span>';
+            document.getElementById('tradeAmount').disabled = true;
+            document.getElementById('signalCode').disabled = true;
+
+            try {
+                // الفحص الأساسي: التحقق من وجود الكود وصلاحيته في قاعدة البيانات قبل بدء الصفقة
+                const { data: signalData, error: signalError } = await _supabase
+                    .from('trading_signals')
+                    .select('profit_percent')
+                    .eq('signal_code', signal)
+                    .eq('is_active', true)
+                    .single();
+
+                if (signalError || !signalData) {
+                    btn.disabled = false;
+                    btn.innerHTML = 'تأكيد وتنفيذ الطلب 🚀';
+                    document.getElementById('tradeAmount').disabled = false;
+                    document.getElementById('signalCode').disabled = false;
+                    return systemAlert("إجراء مرفوض: كود التداول غير صحيح أو منتهي الصلاحية.", "error");
+                }
+
+                // الكود صحيح، نبدأ التداول
+                isTradeActive = true;
+
+                // تحديث العائد بناءً على نسبة الربح الحقيقية المرتبطة بالكود
+                let realProfitPercent = parseFloat(signalData.profit_percent) / 100;
+                let actualProfit = (amount * realProfitPercent).toFixed(2);
+                document.getElementById('expectedProfitDisplay').innerText = `+$${actualProfit}`;
+                localStorage.setItem('_snz_p', actualProfit); // حفظ الربح الفعلي لإظهاره بالنهاية
+
+                const { error: rpcError } = await _supabase.rpc('claim_signal_profit', {
+                    s_code: signal,
+                    u_email: currentUser,
+                    u_invest: amount
+                });
+
+                if (rpcError) throw rpcError; 
+
+                let startTime = Date.now().toString();
+                let amountStr = amount.toString();
+                localStorage.setItem('_snz_t', startTime);
+                localStorage.setItem('_snz_a', amountStr);
+                localStorage.setItem('_snz_sig', createSecureSignature(startTime, amountStr));
+
+                let visualBalance = currentRealBalance - amount;
+                document.getElementById('userBalance').innerText = visualBalance.toFixed(2);
+                document.getElementById('availableBalanceUI').innerText = visualBalance.toFixed(2);
+
+                systemAlert(`تمت المصادقة بنجاح: تجميد ${amount} USDT كهامش تداول في مجمع السيولة.`, "info");
+
+                resumeTradeUI(60, amount);
+
+            } catch (err) {
+                isTradeActive = false; 
+                systemAlert(err.message || "مرفوض: حدث خطأ أثناء تنفيذ العقد، تأكد من صحة الكود أو أنه لم يُستخدم مسبقاً.", "error");
+                resetTradeUI();
+            }
+        }
+
+        function checkPendingTrade() {
+            let t = localStorage.getItem('_snz_t');
+            let a_str = localStorage.getItem('_snz_a');
+            let sig = localStorage.getItem('_snz_sig');
+
+            if (t && a_str && sig) {
+                if (createSecureSignature(t, a_str) !== sig) {
+                    localStorage.removeItem('_snz_t'); localStorage.removeItem('_snz_a'); localStorage.removeItem('_snz_sig');
+                    systemAlert("تم اكتشاف محاولة تلاعب بالبيانات! تم إلغاء الصفقة حفاظاً على الأمان.", "error"); return;
+                }
+
+                let a = parseFloat(a_str);
+                let now = Date.now();
+                let elapsedSeconds = Math.floor((now - parseInt(t)) / 1000);
+
+                if (elapsedSeconds < 60) {
+                    isTradeActive = true; 
+                    let timeLeft = 60 - elapsedSeconds;
+                    systemAlert("تم استرداد العقد النشط في مجمع السيولة...", "info");
+                    
+                    let visualBalance = currentRealBalance - a;
+                    document.getElementById('userBalance').innerText = visualBalance.toFixed(2);
+                    document.getElementById('availableBalanceUI').innerText = visualBalance.toFixed(2);
+                    
+                    resumeTradeUI(timeLeft, a);
+                } else {
+                    isTradeActive = true; 
+                    processSecureWin(a);
+                }
+            }
+        }
+
+        function resumeTradeUI(timeLeft, amount) {
+            document.getElementById('tradeInputZone').classList.add('hidden');
+            document.getElementById('tradeProcessZone').classList.remove('hidden');
+            let progressBar = document.getElementById('tradeProgressBar');
+            let timeText = document.getElementById('tradeTimeLeft');
+            
+            progressBar.style.width = `${((60 - timeLeft) / 60) * 100}%`;
+            if (activeTimer) clearInterval(activeTimer);
+
+            activeTimer = setInterval(() => {
+                timeLeft--;
+                progressBar.style.width = `${((60 - timeLeft) / 60) * 100}%`;
+                
+                let displayTime = timeLeft < 10 ? '0' + timeLeft : timeLeft;
+                timeText.innerText = `00:${displayTime}`;
+                
+                if (timeLeft <= 0) { 
+                    clearInterval(activeTimer); 
+                    processSecureWin(amount); 
+                }
+            }, 1000);
+        }
+
+        async function processSecureWin(amount) {
+            localStorage.removeItem('_snz_t'); 
+            localStorage.removeItem('_snz_a'); 
+            localStorage.removeItem('_snz_sig');
+            
+            let savedProfit = localStorage.getItem('_snz_p');
+            let profitAmount = savedProfit ? parseFloat(savedProfit) : (amount * 0.033333); 
+            localStorage.removeItem('_snz_p');
+
+            isTradeActive = false; 
+
+            await fetchSystemData();
+            
+            systemAlert(`اكتملت الصفقة بنجاح! تم تحرير الهامش ودمج الأرباح (+$${profitAmount.toFixed(2)}) مع رأس المال.`, "success");
+            
+            setTimeout(resetTradeUI, 2500);
+        }
+
+        function resetTradeUI() {
+            document.getElementById('tradeProcessZone').classList.add('hidden');
+            document.getElementById('tradeInputZone').classList.remove('hidden');
+            document.getElementById('tradeAmount').value = '30'; updateSliderUI(); 
+            document.getElementById('signalCode').value = ''; 
+            
+            let btn = document.getElementById('executeBtn'); 
+            btn.innerHTML = "تأكيد وتنفيذ الطلب 🚀";
+            document.getElementById('tradeProgressBar').style.width = '0%'; document.getElementById('tradeTimeLeft').innerText = '01:00';
+            
+            fetchSystemData();
+        }
+
+        function initLiveFeed() {
+            const feedContainer = document.getElementById('liveWithdrawalFeed');
+            let feedHistory = JSON.parse(localStorage.getItem('snz_live_feed')) || [];
+            let lastUpdateTime = localStorage.getItem('snz_feed_last_update') || 0;
+            let now = Date.now();
+
+            if (feedHistory.length === 0) {
+                for (let i = 0; i < 3; i++) {
+                    let randomAmount = (Math.random() * (3.00 - 1.00) + 1.00).toFixed(2);
+                    let randomID = '***' + Math.floor(Math.random() * 90 + 10);
+                    feedHistory.push({ id: randomID, amount: randomAmount, time: now - (i * 5000) });
+                }
+            }
+
+            if (now - lastUpdateTime > 5000) { 
+                let newAmount = (Math.random() * (3.00 - 1.00) + 1.00).toFixed(2);
+                let newID = '***' + Math.floor(Math.random() * 90 + 10);
+                feedHistory.unshift({ id: newID, amount: newAmount, time: now });
+                if (feedHistory.length > 4) feedHistory.pop();
+                
+                localStorage.setItem('snz_feed_last_update', now);
+                localStorage.setItem('snz_live_feed', JSON.stringify(feedHistory));
+            }
+
+            feedContainer.innerHTML = '';
+            feedHistory.forEach(item => {
+                feedContainer.innerHTML += `
+                    <div class="flex justify-between items-center p-2 bg-white/5 rounded-lg border border-white/5 animate-pulse">
+                        <div class="flex items-center gap-2">
+                            <div class="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center text-[10px]">💰</div>
+                            <span class="text-[10px] text-gray-300 font-mono">User ${item.id}</span>
+                        </div>
+                        <span class="text-[11px] font-black text-green-400">+$${item.amount}</span>
+                    </div>
+                `;
+            });
+        }
+
+        let lastPrices = { btc: 0, eth: 0, bnb: 0, sol: 0 };
+        function connectBinanceTicker() {
+            const ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@aggTrade/ethusdt@aggTrade/bnbusdt@aggTrade/solusdt@aggTrade');
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                const symbol = data.s.toLowerCase().replace('usdt', '');
+                const currentPrice = parseFloat(data.p); 
+                const priceElement = document.getElementById(`price-${symbol}`);
+                if (priceElement) {
+                    let formattedPrice = currentPrice > 1000 ? currentPrice.toFixed(2) : currentPrice.toFixed(3);
+                    if (currentPrice > lastPrices[symbol]) { 
+                        priceElement.className = 'text-sm font-black font-mono tracking-wider price-up drop-shadow-[0_0_4px_#4ade80]'; 
+                    } 
+                    else if (currentPrice < lastPrices[symbol]) { 
+                        priceElement.className = 'text-sm font-black font-mono tracking-wider price-down drop-shadow-[0_0_4px_#f87171]'; 
+                    } 
+                    priceElement.innerText = '$' + formattedPrice;
+                    lastPrices[symbol] = currentPrice;
+                }
+            };
+            ws.onerror = () => { ws.close(); };
+            ws.onclose = () => { setTimeout(connectBinanceTicker, 1000); };
+        }
+
+        window.addEventListener('load', () => {
+            fetchSystemData(); 
+            initLiveFeed();
+            
+            setInterval(() => {
+                if (!isTradeActive) fetchSystemData();
+            }, 10000);
+            
+            setInterval(initLiveFeed, 6000); 
+            connectBinanceTicker(); 
+            updateSliderUI(); 
+        });
+
+        function logout() {
+            localStorage.removeItem('currentUserEmail');
+            window.location.replace('index.html');
+        }
+    </script>
+</body>
+</html>
